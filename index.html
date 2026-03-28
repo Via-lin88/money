@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>紐西蘭圓夢計畫 ✈️</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f8ff; text-align: center; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 20px; margin: 10px auto; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .progress-bar { background: #eee; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden; }
+        .progress-fill { background: #4caf50; height: 100%; width: 0%; transition: 0.5s; }
+        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        h1 { color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <h1>🇳🇿 紐西蘭存錢大作戰</h1>
+
+    <div class="card">
+        <h3>💰 今日存錢紀錄</h3>
+        <select id="member">
+            <option value="公公">公公</option>
+            <option value="婆婆">婆婆</option>
+            <option value="媽媽">媽媽</option>
+        </select>
+        <input type="number" id="amount" placeholder="存入金額">
+        <button onclick="saveData()">送出紀錄</button>
+    </div>
+
+    <div id="status-container">
+        </div>
+
+    <script>
+        // 請替換成你 Supabase 的 URL 和 API Key
+        const SUPABASE_URL = '你的URL';
+        const SUPABASE_KEY = '你的KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const members = ["公公", "婆婆", "媽媽"];
+        const targets = { "公公": 50000, "婆婆": 50000, "媽媽": 50000 }; // 這裡可自行修改目標
+
+        async function fetchData() {
+            const { data, error } = await supabase.from('savings').select('*');
+            if (error) return console.error(error);
+
+            let html = "";
+            members.forEach(m => {
+                const total = data.filter(d => d.member === m).reduce((sum, d) => sum + d.amount, 0);
+                const percent = Math.min((total / targets[m]) * 100, 100).toFixed(1);
+                html += `
+                    <div class="card">
+                        <h3>${m} 的進度</h3>
+                        <p>已存：$${total} / 目標：$${targets[m]}</p>
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%"></div></div>
+                        <small>${percent}% 完成</small>
+                    </div>`;
+            });
+            document.getElementById('status-container').innerHTML = html;
+        }
+
+        async function saveData() {
+            const member = document.getElementById('member').value;
+            const amount = parseInt(document.getElementById('amount').value);
+            if (!amount) return alert("請輸入金額");
+
+            const { error } = await supabase.from('savings').insert([{ member, amount }]);
+            if (error) alert("存檔失敗");
+            else {
+                alert("紀錄成功！紐西蘭更近一步了！");
+                document.getElementById('amount').value = "";
+                fetchData();
+            }
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
