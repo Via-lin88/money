@@ -6,76 +6,130 @@
     <title>紐西蘭圓夢計畫 ✈️</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f8ff; text-align: center; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 20px; margin: 10px auto; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .progress-bar { background: #eee; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden; }
-        .progress-fill { background: #4caf50; height: 100%; width: 0%; transition: 0.5s; }
-        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
-        h1 { color: #0056b3; }
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f0f4f8; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--primary); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 450px; }
+        .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); border: 1px solid #e1e8ed; }
+        h1 { font-size: 24px; color: #1a508b; text-align: center; margin-bottom: 25px; }
+        h3 { margin-top: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 14px; margin-bottom: 5px; color: #666; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-save { background: var(--accent); color: white; }
+        .btn-target { background: #3498db; color: white; margin-top: 5px; font-size: 12px; padding: 5px; }
+        .progress-container { margin: 15px 0; }
+        .progress-bar { background: #eee; border-radius: 20px; height: 25px; overflow: hidden; position: relative; border: 1px solid #ddd; }
+        .progress-fill { background: linear-gradient(90deg, #2ecc71, #27ae60); height: 100%; width: 0%; transition: 1s ease-out; }
+        .progress-text { position: absolute; width: 100%; text-align: center; line-height: 25px; font-size: 13px; font-weight: bold; color: #222; }
+        .stats { display: flex; justify-content: space-between; font-size: 14px; margin-top: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
+<div class="container">
     <h1>🇳🇿 紐西蘭存錢大作戰</h1>
 
     <div class="card">
-        <h3>💰 今日存錢紀錄</h3>
-        <select id="member">
-            <option value="公公">公公</option>
-            <option value="婆婆">婆婆</option>
-            <option value="媽媽">媽媽</option>
-        </select>
-        <input type="number" id="amount" placeholder="存入金額">
-        <button onclick="saveData()">送出紀錄</button>
+        <h3>💰 我今天存了錢</h3>
+        <div class="input-group">
+            <label>誰存的？</label>
+            <select id="member">
+                <option value="公公">公公</option>
+                <option value="婆婆">婆婆</option>
+                <option value="媽媽">媽媽</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>金額 (台幣)</label>
+            <input type="number" id="amount" placeholder="例如：1000" inputmode="numeric">
+        </div>
+        <button class="btn-save" onclick="saveData()">紀錄存錢</button>
     </div>
 
-    <div id="status-container">
-        </div>
+    <div id="status-container"></div>
+</div>
 
-    <script>
-        // 請替換成你 Supabase 的 URL 和 API Key
-        const SUPABASE_URL = '你的URL';
-        const SUPABASE_KEY = '你的KEY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+    // --------------------------------------------------
+    // ⚠️ 這裡請換成你的 Supabase 資訊 ⚠️
+    const SUPABASE_URL = '你的_PROJECT_URL'; 
+    const SUPABASE_KEY = '你的_ANON_KEY';
+    // --------------------------------------------------
 
-        const members = ["公公", "婆婆", "媽媽"];
-        const targets = { "公公": 50000, "婆婆": 50000, "媽媽": 50000 }; // 這裡可自行修改目標
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const members = ["公公", "婆婆", "媽媽"];
 
-        async function fetchData() {
-            const { data, error } = await supabase.from('savings').select('*');
-            if (error) return console.error(error);
+    async function init() {
+        await fetchData();
+    }
 
-            let html = "";
-            members.forEach(m => {
-                const total = data.filter(d => d.member === m).reduce((sum, d) => sum + d.amount, 0);
-                const percent = Math.min((total / targets[m]) * 100, 100).toFixed(1);
-                html += `
-                    <div class="card">
-                        <h3>${m} 的進度</h3>
-                        <p>已存：$${total} / 目標：$${targets[m]}</p>
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%"></div></div>
-                        <small>${percent}% 完成</small>
-                    </div>`;
-            });
-            document.getElementById('status-container').innerHTML = html;
+    async function fetchData() {
+        // 抓取所有的存錢紀錄與目標
+        const { data, error } = await supabase.from('savings').select('*');
+        if (error) {
+            alert("載入失敗，請檢查 URL/Key 是否填對");
+            return;
         }
 
-        async function saveData() {
-            const member = document.getElementById('member').value;
-            const amount = parseInt(document.getElementById('amount').value);
-            if (!amount) return alert("請輸入金額");
+        let html = "";
+        members.forEach(m => {
+            // 計算總存錢量
+            const total = data.filter(d => d.member === m && d.amount).reduce((sum, d) => sum + d.amount, 0);
+            
+            // 抓取最新的目標金額 (取該成員最後一筆有 target 的紀錄)
+            const targetEntry = data.filter(d => d.member === m && d.target).sort((a,b) => b.id - a.id)[0];
+            const currentTarget = targetEntry ? targetEntry.target : 100000; // 沒設的話預設 10 萬
 
-            const { error } = await supabase.from('savings').insert([{ member, amount }]);
-            if (error) alert("存檔失敗");
-            else {
-                alert("紀錄成功！紐西蘭更近一步了！");
-                document.getElementById('amount').value = "";
-                fetchData();
-            }
+            const percent = Math.min((total / currentTarget) * 100, 100).toFixed(1);
+
+            html += `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>${m === '公公' ? '👨‍🦳' : m === '婆婆' ? '👵' : '👩'} ${m}</h3>
+                        <button class="btn-target" onclick="updateTarget('${m}')">修改目標</button>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-text">${percent}%</div>
+                            <div class="progress-fill" style="width: ${percent}%"></div>
+                        </div>
+                        <div class="stats">
+                            <span>已存: $${total.toLocaleString()}</span>
+                            <span>目標: $${currentTarget.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('status-container').innerHTML = html;
+    }
+
+    async function saveData() {
+        const member = document.getElementById('member').value;
+        const amount = parseInt(document.getElementById('amount').value);
+
+        if (!amount || amount <= 0) return alert("請輸入金額！");
+
+        const { error } = await supabase.from('savings').insert([{ member, amount }]);
+        if (error) {
+            alert("儲存失敗: " + error.message);
+        } else {
+            alert("🎉 紀錄成功！紐西蘭在等你了！");
+            document.getElementById('amount').value = "";
+            fetchData();
         }
+    }
 
-        fetchData();
-    </script>
+    async function updateTarget(name) {
+        const newTarget = prompt(`請輸入 ${name} 的新目標金額：`, "100000");
+        if (newTarget && !isNaN(newTarget)) {
+            const { error } = await supabase.from('savings').insert([{ member: name, target: parseInt(newTarget), amount: 0 }]);
+            if (error) alert("修改失敗");
+            else fetchData();
+        }
+    }
+
+    init();
+</script>
 </body>
 </html>
